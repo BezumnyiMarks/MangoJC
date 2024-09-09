@@ -1,0 +1,35 @@
+<resources>
+    <string name="app_name">MangoJC</string>
+    <string name="next">Продолжить</string>
+    <string name="incorrect_number">Неверно введён номер</string>
+    <string name="verification_code">133337</string>
+    <string name="registration">РЕГИСТРАТУРА</string>
+    <string name="register">Зарегистрироваться</string>
+    <string name="phone_number_key">phoneKey</string>
+    <string name="enter_name">Введите Ваше имя</string>
+    <string name="enter_nick_name">Придумайте никнейм</string>
+    <string name="personal_status">О себе</string>
+    <string name="personal_status_default">Пожилой человек</string>
+    <string name="city">Город</string>
+    <string name="city_default">Самара</string>
+    <string name="vk">Какой-то вк...</string>
+    <string name="instagram">Какой-то инстаграм...</string>
+    <string name="date_of_birth">Дата рождения</string>
+    <string name="set_date_of_birth">Установить дату рождения</string>
+    <string name="date_of_birth_default">1995-01-01</string>
+    <string name="disclaimer">ВНИМАНИЕ!
+        В приложении упоминается о социальной
+        сети Instagram, созданной компанией Meta.
+        Meta является запрещённой на территории РФ
+        экстремистской и терапевтической, а также
+        антиправославной нерусской организацией,
+        несущей в этот мир зло исключительного уровня и
+        беспрецедентных масштабов. Автор приложения
+        до боли в груди осуждает и всячески клянёт
+        данную организацию за её терапевтическую
+        и подрывную деятельность и испытывает
+        к ней такую личную неприязнь, что кушать
+        не может.
+
+    </string>
+</resources>
