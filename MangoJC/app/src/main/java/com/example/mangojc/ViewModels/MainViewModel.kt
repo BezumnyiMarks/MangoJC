@@ -33,7 +33,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val phoneNumberValid = MutableStateFlow(false)
     val verifCodeElements = MutableStateFlow(listOf<VerifCodeElement>())
 
-    val externalStorageImagesGranted = MutableStateFlow(false)
     val externalStorageImages = MutableStateFlow(listOf<Uri>())
 
     private val tokenRefreshSate = MutableStateFlow<LoadingState>(LoadingState.Loading)
@@ -126,7 +125,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun getProfileData(dbProfileData: DBProfileData?, context: Context){
-        if (dbProfileData?.userName == null){
+        if (dbProfileData?.phone.isNullOrEmpty()){
             profileDataLoading.value = LoadingState.Loading
             viewModelScope.launch {
                 kotlin.runCatching {
@@ -140,9 +139,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         profileDataLoading.value = LoadingState.Success
                     },
                     onFailure = {
-                        Toast.makeText(context,
-                            it.message,
-                            Toast.LENGTH_LONG).show()
                         if(it.message?.contains("401") == true){
                             refreshToken(context)
                             tokenRefreshSate.collect{ tokenRefreshState ->
@@ -163,7 +159,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                                 }
 
                             }
-                        } else  profileDataLoading.value = LoadingState.Failure
+                        } else  {
+                            Toast.makeText(context,
+                                it.message,
+                                Toast.LENGTH_LONG).show()
+                            profileDataLoading.value = LoadingState.Failure
+                        }
                     }
                 )
             }
@@ -180,12 +181,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             }.fold(
                 onSuccess = {
                     _avatars.value = it
-                    Log.d("Success", it.toString())
+                    getProfileData(DBProfileData(""), context)
                     profileDataUploading.value = LoadingState.Success
                 },
                 onFailure = {
-                    Log.d("AVATARS", it.message.toString())
-                    Toast.makeText(context, it.message, Toast.LENGTH_LONG).show()
                     if(it.message?.contains("401") == true){
                         refreshToken(context)
                         tokenRefreshSate.collect{ tokenRefreshState ->
@@ -206,18 +205,21 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
                         }
                     }
-                    else profileDataUploading.value = LoadingState.Failure
+                    else{
+                        Toast.makeText(context, it.message, Toast.LENGTH_LONG).show()
+                        profileDataUploading.value = LoadingState.Failure
+                    }
                 }
             )
         }
     }
 
-    private fun refreshToken(context: Context){
+    fun refreshToken(context: Context){
         tokenRefreshSate.value = LoadingState.Loading
         viewModelScope.launch {
             kotlin.runCatching {
                 Repository()
-                    .getRetrofitInstanceWithToken(context, "REFRESH")
+                    .getRetrofitInstance()
                     .refreshToken(RefreshBody(rep.getRefreshToken(context).toString()))
             }.fold(
                 onSuccess = {
@@ -235,24 +237,24 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    private fun convertToProfileData(dbProfileData: DBProfileData): Profile{
+    private fun convertToProfileData(dbProfileData: DBProfileData?): Profile{
         return Profile(
             ProfileData(
-                dbProfileData.name,
-                dbProfileData.userName,
-                dbProfileData.birthday,
-                dbProfileData.city,
-                dbProfileData.vk,
-                dbProfileData.instagram,
-                dbProfileData.status,
-                dbProfileData.avatar,
+                dbProfileData?.name,
+                dbProfileData?.userName,
+                dbProfileData?.birthday,
+                dbProfileData?.city,
+                dbProfileData?.vk,
+                dbProfileData?.instagram,
+                dbProfileData?.status,
+                dbProfileData?.avatar,
                 null,
                 null,
                 null,
                 null,
-                dbProfileData.phone,
+                dbProfileData?.phone,
                 null,
-                null
+                Avatars("", dbProfileData?.avatar, "")
             )
         )
     }

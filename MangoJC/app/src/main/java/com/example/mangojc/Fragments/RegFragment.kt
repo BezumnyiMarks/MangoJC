@@ -11,10 +11,13 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
@@ -34,6 +37,7 @@ import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.ImeAction
@@ -122,6 +126,12 @@ fun Registration(phoneNumber: String, viewModel: MainViewModel, dbViewModel: DBV
         )
 
         OutlinedTextField(
+            shape = RoundedCornerShape(10.dp),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = colorResource(R.color.new_product_blue),
+                unfocusedBorderColor = colorResource(R.color.text_grey_composable),
+                cursorColor = colorResource(R.color.text_black_composable),
+            ),
             maxLines = 1,
             textStyle = TextStyle(
                 fontSize = 22.sp
@@ -131,7 +141,7 @@ fun Registration(phoneNumber: String, viewModel: MainViewModel, dbViewModel: DBV
                 .focusProperties {
                     next = b
                 }
-                .padding(bottom = 20.dp),
+                .padding(bottom = 16.dp),
             placeholder = {
                 Text(text = stringResource(id = R.string.enter_name))
             },
@@ -147,6 +157,12 @@ fun Registration(phoneNumber: String, viewModel: MainViewModel, dbViewModel: DBV
         )
 
         OutlinedTextField(
+            shape = RoundedCornerShape(10.dp),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = colorResource(R.color.new_product_blue),
+                unfocusedBorderColor = colorResource(R.color.text_grey_composable),
+                cursorColor = colorResource(R.color.text_black_composable),
+            ),
             maxLines = 1,
             textStyle = TextStyle(
                 fontSize = 22.sp
@@ -156,7 +172,7 @@ fun Registration(phoneNumber: String, viewModel: MainViewModel, dbViewModel: DBV
                 .focusProperties {
                     previous = a
                 }
-                .padding(bottom = 20.dp),
+                .padding(bottom = 16.dp),
             placeholder = {
                 Text(text = stringResource(id = R.string.enter_nick_name))
             },
@@ -171,11 +187,19 @@ fun Registration(phoneNumber: String, viewModel: MainViewModel, dbViewModel: DBV
             })
         )
         if (name != "" && userName != ""){
-            Button(onClick = {
+            Button(
+                shape = RoundedCornerShape(10.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = colorResource(R.color.new_product_blue),
+                ),
+                onClick = {
                 if (!regLoading.value)
                     viewModel.sendUserRegData(phoneNumber, name, userName)
             }) {
-                Text(text = stringResource(id = R.string.register))
+                Text(
+                    color = colorResource(R.color.white),
+                    text = stringResource(id = R.string.register)
+                )
             }
         }
     }

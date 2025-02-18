@@ -34,3 +34,5 @@ data class DBProfileData(
     @ColumnInfo(name = "avatar")
     val avatar: String? = null
 )
+
+

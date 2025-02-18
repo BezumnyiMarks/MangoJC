@@ -46,8 +46,7 @@ class Repository {
           prefs.edit().putString(ACCESS_TOKEN, token).apply()
      }
 
-
-     private fun getAccessToken(context:Context): String?{
+     fun getAccessToken(context:Context): String?{
           val prefs = context.getSharedPreferences(PREFS_TOKENS, MODE_PRIVATE)
           return prefs.getString(ACCESS_TOKEN, "")
      }
@@ -56,7 +55,6 @@ class Repository {
           val prefs = context.getSharedPreferences(PREFS_TOKENS, MODE_PRIVATE)
           prefs.edit().putString(REFRESH_TOKEN, token).apply()
      }
-
 
      fun getRefreshToken(context:Context): String?{
           val prefs = context.getSharedPreferences(PREFS_TOKENS, MODE_PRIVATE)
@@ -68,30 +66,18 @@ class Repository {
           val httpLoggingInterceptor = HttpLoggingInterceptor()
           httpLoggingInterceptor.level = HttpLoggingInterceptor.Level.BODY
           var okHttpClient = OkHttpClient.Builder().build()
-          when(tokenType){
-               "ACCESS" -> {
-                    okHttpClient = OkHttpClient.Builder()
-                         .addInterceptor {
-                              val request = it.request().newBuilder()
-                                   .addHeader("Authorization", "Bearer ${getAccessToken(context)}")
-                                   .build()
-                              return@addInterceptor it.proceed(request)
-                         }
-                         .addInterceptor(httpLoggingInterceptor)
+
+          okHttpClient = OkHttpClient.Builder()
+               .addInterceptor {
+                    val request = it
+                         .request()
+                         .newBuilder()
+                         .addHeader("Authorization", "Bearer ${getAccessToken(context)}")
                          .build()
+                    return@addInterceptor it.proceed(request)
                }
-               else -> {
-                    okHttpClient = OkHttpClient.Builder()
-                         .addInterceptor {
-                              val request = it.request().newBuilder()
-                                   .addHeader("Authorization", "Bearer ${getRefreshToken(context)}")
-                                   .build()
-                              return@addInterceptor it.proceed(request)
-                         }
-                         .addInterceptor(httpLoggingInterceptor)
-                         .build()
-               }
-          }
+               .addInterceptor(httpLoggingInterceptor)
+               .build()
 
           val retrofit = Retrofit.Builder()
                .baseUrl(BASE_URL)
@@ -121,6 +107,9 @@ interface SearchUser{
 
      @POST("register/")
      suspend fun postRegData(@Body regData: RegBody): RegData
+
+     @POST("refresh-token/")
+     suspend fun refreshToken(@Body refreshBody: RefreshBody): RegData
 }
 
 interface SearchUserWithToken{
@@ -129,7 +118,4 @@ interface SearchUserWithToken{
 
      @GET("me/")
      suspend fun getProfileData(): Profile
-
-     @GET("refresh-token/")
-     suspend fun refreshToken(@Body refreshData: RefreshBody): RegData
 }

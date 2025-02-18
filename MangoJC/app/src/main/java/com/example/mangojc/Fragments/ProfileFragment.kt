@@ -21,6 +21,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -41,20 +42,26 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerColors
+import androidx.compose.material3.DatePickerDefaults
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemColors
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SelectableDates
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextFieldColors
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -64,6 +71,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -72,6 +80,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
@@ -96,6 +105,7 @@ import com.example.mangojc.Data.LoadingState
 import com.example.mangojc.Data.ProfileData
 import com.example.mangojc.Data.UserDataBody
 import com.example.mangojc.R
+import com.example.mangojc.Repository.Repository
 import com.example.mangojc.ViewModels.DBViewModel
 import com.example.mangojc.ViewModels.MainViewModel
 import kotlinx.coroutines.CoroutineScope
@@ -124,12 +134,14 @@ class ProfileFragment : Fragment() {
             }
         }
     }
+    private val rep = Repository()
     private var phoneNumber: String? = null
 
     private val launcher = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()){ map ->
         if(!map.values.all { it } && Build.VERSION.SDK_INT == Build.VERSION_CODES.TIRAMISU){
             Toast.makeText(activity, "Permissions are not Granted", Toast.LENGTH_SHORT).show()
         }
+        else getImages(requireActivity().contentResolver, viewModel)
     }
 
 
@@ -148,17 +160,8 @@ class ProfileFragment : Fragment() {
     ): View {
         val view = ComposeView(requireContext())
         checkPermissions()
-        if (!viewModel.externalStorageImagesGranted.value)
-            CoroutineScope(Dispatchers.IO).launch {
-                getImages(requireActivity().contentResolver, viewModel)
-                viewModel.externalStorageImagesGranted.collect{
-                    if (it)
-                        this.cancel()
-                }
-            }
         view.setContent {
-            BottomNavMenu(viewModel, dbViewModel, requireContext(), phoneNumber ?: "")
-            WatchProfileData(viewModel, dbViewModel)
+            BottomNavMenu(viewModel, dbViewModel, requireContext(), rep)
         }
         return view
     }
@@ -169,7 +172,7 @@ class ProfileFragment : Fragment() {
             requireActivity().let { ContextCompat.checkSelfPermission(it.applicationContext, permission) } == PackageManager.PERMISSION_GRANTED
         }
         if (isAllGranted){
-            Toast.makeText(requireActivity(), "Permissions are Granted", Toast.LENGTH_SHORT).show()
+            getImages(requireActivity().contentResolver, viewModel)
         }
         else {
             launcher.launch(REQUEST_PERMISSIONS)
@@ -179,31 +182,16 @@ class ProfileFragment : Fragment() {
     companion object{
         @RequiresApi(Build.VERSION_CODES.TIRAMISU)
         private val REQUEST_PERMISSIONS: Array<String> = buildList {
-            add(android.Manifest.permission.READ_EXTERNAL_STORAGE)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU){
-                add(READ_MEDIA_IMAGES)
-            }
+            if(Build.VERSION.SDK_INT == Build.VERSION_CODES.TIRAMISU)
+                add(android.Manifest.permission.READ_EXTERNAL_STORAGE)
+            add(READ_MEDIA_IMAGES)
         }.toTypedArray()
-    }
-}
-
-@Composable
-fun WatchProfileData(viewModel: MainViewModel, dbViewModel: DBViewModel){
-    val profileDataLoading = viewModel.profileDataLoading.collectAsState()
-    val profileData = viewModel.profileData.collectAsState()
-    val data = profileData.value.profileData
-    if (profileDataLoading.value == LoadingState.Success){
-        LaunchedEffect(Unit){
-            val avatar = dbViewModel.getProfileData(profileData.value.profileData.phone ?: "")?.avatar ?: ""
-            dbViewModel.addProfileData(DBProfileData
-                (data.phone ?: "", data.name, data.userName, data.birthday, data.city, data.status, avatar))
-        }
     }
 }
 
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
-fun ProfileView(viewModel: MainViewModel){
+fun ProfileView(viewModel: MainViewModel, rep: Repository, context: Context){
     val profileData = viewModel.profileData.collectAsState()
     Column(
         horizontalAlignment = Alignment.Start,
@@ -215,9 +203,9 @@ fun ProfileView(viewModel: MainViewModel){
             verticalAlignment = Alignment.CenterVertically
         ) {
             SetImage(
-                image = if (profileData.value.profileData.avatar != null) profileData.value.profileData.avatar else null,
+                image = if (profileData.value.profileData.avatars?.bigAvatar != null) "https://plannerok.ru/${profileData.value.profileData.avatars?.bigAvatar}" else null,
                 modifier = Modifier.size(150.dp),
-                shape = RoundedCornerShape(topStart = 10.dp, bottomStart = 10.dp),
+                shape = RoundedCornerShape(10.dp),
                 contentScale = ContentScale.Crop
             )
 
@@ -226,7 +214,10 @@ fun ProfileView(viewModel: MainViewModel){
         (if (profileData.value.profileData.userName != null) profileData.value.profileData.userName else "Глад Валакас")?.let {
             Text(
                 text = it,
-                modifier = Modifier.padding(top = 8.dp, bottom = 8.dp)
+                modifier = Modifier.padding(top = 8.dp, bottom = 8.dp).clickable {
+                    Log.d("OldAccess", rep.getAccessToken(context).toString())
+                    viewModel.refreshToken(context)
+                }
             )
         }
         (if (profileData.value.profileData.phone != null) profileData.value.profileData.phone else "+79999999999")?.let {
@@ -298,7 +289,7 @@ fun SetImage(
         shape = shape,
         //modifier = Modifier.background(colorResource(id = R.color.dark_gray))
     ) {
-        if (image == null || !image.toString().startsWith("content"))
+        if (image == null)
             Image(
                 painter = painterResource(id = R.drawable.glad),
                 contentDescription = null,
@@ -318,9 +309,9 @@ fun SetImage(
 
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
-fun EditProfileView(viewModel: MainViewModel, dbViewModel: DBViewModel, context: Context){
+fun EditProfileView(viewModel: MainViewModel, context: Context){
     val profileData = viewModel.profileData.collectAsState()
-    val currentImage = profileData.value.profileData.avatar ?: ""
+    val currentImage = "https://plannerok.ru/${profileData.value.profileData.avatars?.bigAvatar}"
     val currentName = profileData.value.profileData.name ?: ""
     val currentStatus = profileData.value.profileData.status ?: ""
     val currentCity = profileData.value.profileData.city ?: ""
@@ -355,7 +346,6 @@ fun EditProfileView(viewModel: MainViewModel, dbViewModel: DBViewModel, context:
     var dateDialogOpen by remember {
         mutableStateOf(false)
     }
-    Log.d("Birthday", birthday)
 
     if (!showImages)
         Column(
@@ -370,15 +360,14 @@ fun EditProfileView(viewModel: MainViewModel, dbViewModel: DBViewModel, context:
                 Icon(
                     painter = painterResource(id = R.drawable.done),
                     contentDescription = "",
-                    tint = Color.Blue,
+                    tint = colorResource(R.color.new_product_blue),
                     modifier = Modifier
-                        .size(30.dp)
+                        .size(24.dp)
                         .clickable(
                             onClick = {
                                 var encodedImage = ""
                                 if (selectedImage != "")
-                                    encodedImage =
-                                        encodeImage(selectedImage.toUri(), context)
+                                    encodedImage = encodeImage(selectedImage.toUri(), context)
                                 val userDataBody = UserDataBody(
                                     name,
                                     profileData.value.profileData.userName ?: "",
@@ -390,20 +379,6 @@ fun EditProfileView(viewModel: MainViewModel, dbViewModel: DBViewModel, context:
                                     Avatar(
                                         selectedImage,
                                         encodedImage
-                                    )
-                                )
-                                dbViewModel.addProfileData(
-                                    DBProfileData
-                                        (
-                                        profileData.value.profileData.phone ?: "",
-                                        name,
-                                        profileData.value.profileData.userName,
-                                        birthday,
-                                        city,
-                                        status,
-                                        vk,
-                                        instagram,
-                                        selectedImage
                                     )
                                 )
                                 viewModel.putProfileData(userDataBody, context)
@@ -419,7 +394,7 @@ fun EditProfileView(viewModel: MainViewModel, dbViewModel: DBViewModel, context:
                     .verticalScroll(rememberScrollState())
             ){
                 SetImage(
-                    image = if (selectedImage != "") selectedImage else null,
+                    image = if (!profileData.value.profileData.avatars?.bigAvatar.isNullOrEmpty()) selectedImage else null,
                     modifier = Modifier
                         .clickable(
                             onClick = {
@@ -437,105 +412,51 @@ fun EditProfileView(viewModel: MainViewModel, dbViewModel: DBViewModel, context:
                         modifier = Modifier
                             .padding(top = 20.dp)
                     ) {
-                        OutlinedTextField(
-                            maxLines = 1,
-                            textStyle = TextStyle(
-                                fontSize = 22.sp
-                            ),
-                            modifier = Modifier
-                                .padding(bottom = 20.dp),
-                            placeholder = {
-                                Text(
-                                    text = stringResource(id = R.string.enter_name),
-                                    color = Color.LightGray
-                                )
-                            },
+                        TextDataField(
                             value = name,
+                            hint = stringResource(id = R.string.enter_name),
                             onValueChange = {
                                 name = it
                             }
                         )
 
-                        OutlinedTextField(
-                            maxLines = 1,
-                            textStyle = TextStyle(
-                                fontSize = 22.sp
-                            ),
-                            modifier = Modifier
-                                .padding(bottom = 20.dp),
-                            placeholder = {
-                                Text(
-                                    text = stringResource(id = R.string.personal_status),
-                                    color = Color.LightGray
-                                )
-                            },
+                        TextDataField(
                             value = status,
+                            hint = stringResource(id = R.string.personal_status),
                             onValueChange = {
                                 status = it
                             }
                         )
 
-                        OutlinedTextField(
-                            maxLines = 1,
-                            textStyle = TextStyle(
-                                fontSize = 22.sp
-                            ),
-                            modifier = Modifier
-                                .padding(bottom = 20.dp),
-                            placeholder = {
-                                Text(
-                                    text = stringResource(id = R.string.vk),
-                                    color = Color.LightGray
-                                )
-                            },
+                        TextDataField(
                             value = vk,
+                            hint = stringResource(id = R.string.vk),
                             onValueChange = {
                                 vk = it
                             }
                         )
 
-                        OutlinedTextField(
-                            maxLines = 1,
-                            textStyle = TextStyle(
-                                fontSize = 22.sp
-                            ),
-                            modifier = Modifier
-                                .padding(bottom = 20.dp),
-                            placeholder = {
-                                Text(
-                                    text = stringResource(id = R.string.instagram),
-                                    color = Color.LightGray
-                                )
-                            },
+                        TextDataField(
                             value = instagram,
+                            hint = stringResource(id = R.string.instagram),
                             onValueChange = {
                                 instagram = it
                             }
                         )
 
-                        OutlinedTextField(
-                            maxLines = 1,
-                            textStyle = TextStyle(
-                                fontSize = 22.sp
-                            ),
-                            modifier = Modifier
-                                .padding(bottom = 20.dp),
-                            placeholder = {
-                                Text(
-                                    text = stringResource(id = R.string.city),
-                                    color = Color.LightGray
-                                )
-                            },
+                        TextDataField(
                             value = city,
+                            hint = stringResource(id = R.string.city),
                             onValueChange = {
                                 city = it
                             }
                         )
 
                         OutlinedButton(
-                            border = BorderStroke(3.dp, Color.Blue),
+                            border = BorderStroke(3.dp, colorResource(R.color.new_product_blue)),
                             content = {
                                 Text(
+                                    color = colorResource(R.color.text_black_composable),
                                     text = stringResource(id = R.string.set_date_of_birth)
                                 )
                             },
@@ -545,6 +466,7 @@ fun EditProfileView(viewModel: MainViewModel, dbViewModel: DBViewModel, context:
                         )
 
                         Text(
+                            color = colorResource(R.color.text_black_composable),
                             fontSize = 22.sp,
                             text = getDate(birthday)
                         )
@@ -569,59 +491,84 @@ fun EditProfileView(viewModel: MainViewModel, dbViewModel: DBViewModel, context:
 }
 
 @Composable
+fun TextDataField(value: String, hint: String, onValueChange: (String) -> Unit){
+    OutlinedTextField(
+        shape = RoundedCornerShape(10.dp),
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedBorderColor = colorResource(R.color.new_product_blue),
+            unfocusedBorderColor = colorResource(R.color.text_grey_composable),
+            cursorColor = colorResource(R.color.text_black_composable),
+        ),
+        maxLines = 1,
+        textStyle = TextStyle(
+            color = colorResource(R.color.text_black_composable),
+            fontSize = 22.sp
+        ),
+        modifier = Modifier
+            .padding(bottom = 16.dp),
+        placeholder = {
+            Text(
+                text = hint,
+                color = colorResource(R.color.text_grey_composable)
+            )
+        },
+        value = value,
+        onValueChange = {
+            onValueChange(it)
+        }
+    )
+}
+
+@Composable
 fun ShowImages(viewModel: MainViewModel, onDismiss: () -> Unit, onImageSelected: (String) -> Unit){
     val images = viewModel.externalStorageImages.collectAsState()
-    Card(
-        elevation = CardDefaults.cardElevation(
-            defaultElevation = 5.dp
-        )
+    Column(
+        horizontalAlignment = Alignment.Start,
+        modifier = Modifier
+            .background(color = colorResource(R.color.white))
+            .padding(top = 16.dp)
     ) {
-        Column(
-            horizontalAlignment = Alignment.Start,
+        Icon(
+            painter = painterResource(id = R.drawable.backspace),
+            contentDescription = "",
+            tint = colorResource(R.color.new_product_blue),
             modifier = Modifier
-                .padding(top = 20.dp)
-        ) {
-            Icon(
-                painter = painterResource(id = R.drawable.backspace),
-                contentDescription = "",
-                tint = Color.Blue,
-                modifier = Modifier
-                    .padding(start = 16.dp)
-                    .clickable(
-                        onClick = {
-                            onDismiss()
-                        }
-                    )
-            )
-            LazyVerticalGrid(
-                modifier = Modifier.padding(20.dp),
-                columns = GridCells.Fixed(3),
-                content = {
-                    items(images.value) {
-                        Box(
+                .padding(start = 16.dp)
+                .clickable(
+                    onClick = {
+                        onDismiss()
+                    }
+                )
+        )
+        LazyVerticalGrid(
+            modifier = Modifier
+                .padding(horizontal = 8.dp, vertical = 16.dp),
+            columns = GridCells.Fixed(3),
+            content = {
+                items(images.value) {
+                    Box(
+                        modifier = Modifier
+                            .padding(8.dp)
+                            .aspectRatio(1f)
+                            .clip(RoundedCornerShape(10.dp)),
+                    ){
+                        SetImage(
+                            image = if (it.toString() != "") it else null,
                             modifier = Modifier
-                                .padding(8.dp)
-                                .aspectRatio(1f)
-                                .clip(RoundedCornerShape(10.dp)),
-                        ){
-                            SetImage(
-                                image = if (it.toString() != "") it else null,
-                                modifier = Modifier
-                                    .clickable(
-                                        onClick = {
-                                            onImageSelected(it.toString())
-                                            onDismiss()
-                                        }
-                                    )
-                                    .size(150.dp),
-                                shape = RoundedCornerShape(10.dp),
-                                contentScale = ContentScale.Crop
-                            )
-                        }
+                                .clickable(
+                                    onClick = {
+                                        onImageSelected(it.toString())
+                                        onDismiss()
+                                    }
+                                )
+                                .size(150.dp),
+                            shape = RoundedCornerShape(10.dp),
+                            contentScale = ContentScale.Crop
+                        )
                     }
                 }
-            )
-        }
+            }
+        )
     }
 }
 
@@ -643,9 +590,19 @@ fun MyDatePickerDialog(
     } ?: ""
 
     DatePickerDialog(
-        onDismissRequest = { onDismiss() },
+        colors = DatePickerDefaults.colors(
+            containerColor = colorResource(R.color.white),
+            todayDateBorderColor = colorResource(R.color.new_product_blue),
+            selectedYearContainerColor = colorResource(R.color.new_product_blue),
+            selectedDayContainerColor = colorResource(R.color.new_product_blue),
+        ),
+        onDismissRequest = {onDismiss()},
         confirmButton = {
-            Button(onClick = {
+            Button(
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = colorResource(R.color.new_product_blue),
+                ),
+                onClick = {
                 onDateSelected(selectedDate)
                 onDismiss()
             }
@@ -655,7 +612,11 @@ fun MyDatePickerDialog(
             }
         },
         dismissButton = {
-            Button(onClick = {
+            Button(
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = colorResource(R.color.new_product_blue),
+                ),
+                onClick = {
                 onDismiss()
             }) {
                 Text(text = "Cancel")
@@ -663,6 +624,18 @@ fun MyDatePickerDialog(
         }
     ) {
         DatePicker(
+            colors = DatePickerDefaults.colors(
+                containerColor = colorResource(R.color.white),
+                todayDateBorderColor = colorResource(R.color.new_product_blue),
+                selectedYearContainerColor = colorResource(R.color.new_product_blue),
+                selectedDayContainerColor = colorResource(R.color.new_product_blue),
+                dateTextFieldColors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = colorResource(R.color.new_product_blue),
+                    focusedLabelColor = colorResource(R.color.new_product_blue),
+                    unfocusedBorderColor = colorResource(R.color.text_grey_composable),
+                    cursorColor = colorResource(R.color.text_black_composable),
+                )
+            ),
             state = datePickerState
         )
     }
@@ -671,29 +644,23 @@ fun MyDatePickerDialog(
 @RequiresApi(Build.VERSION_CODES.O)
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @Composable
-fun BottomNavMenu(viewModel: MainViewModel, dbViewModel: DBViewModel, context: Context, phoneNumber: String){
+fun BottomNavMenu(viewModel: MainViewModel, dbViewModel: DBViewModel, context: Context, rep: Repository){
     val items = listOf(
         BottomNavItem(
             title = "Профиль",
-            selectedColor = Color.Blue,
-            unselectedColor = Color.LightGray,
             icon = R.drawable.profile_icon
         ),
         BottomNavItem(
             title = "Чаты",
-            selectedColor = Color.Blue,
-            unselectedColor = Color.LightGray,
             icon = R.drawable.chats
         ),
         BottomNavItem(
             title = "Редактировать",
-            selectedColor = Color.Blue,
-            unselectedColor = Color.LightGray,
             icon = R.drawable.baseline_edit_24
         )
     )
 
-    GetProfileData(viewModel, dbViewModel, context, phoneNumber)
+    GetProfileData(viewModel, dbViewModel, context)
 
     var selectedItemIndex by rememberSaveable {
         mutableIntStateOf(0)
@@ -706,9 +673,21 @@ fun BottomNavMenu(viewModel: MainViewModel, dbViewModel: DBViewModel, context: C
     Surface {
         Scaffold(
             bottomBar = {
-                NavigationBar {
+                NavigationBar(
+                    containerColor = colorResource(R.color.white),
+                ) {
                     items.forEachIndexed { index, bottomNavItem ->
                         NavigationBarItem(
+                            colors = NavigationBarItemColors(
+                                selectedIconColor = colorResource(R.color.new_product_blue),
+                                selectedTextColor = colorResource(R.color.new_product_blue),
+                                selectedIndicatorColor = colorResource(R.color.white),
+                                unselectedIconColor = colorResource(R.color.text_grey_composable),
+                                unselectedTextColor = colorResource(R.color.text_grey_composable),
+                                disabledIconColor = colorResource(R.color.extra_light_grey),
+                                disabledTextColor = colorResource(R.color.extra_light_grey)
+
+                            ),
                             selected = selectedItemIndex == index,
                             onClick = {
                                 selectedItemIndex = index
@@ -717,12 +696,10 @@ fun BottomNavMenu(viewModel: MainViewModel, dbViewModel: DBViewModel, context: C
                                 Icon(
                                     painter = painterResource(id = bottomNavItem.icon),
                                     contentDescription = bottomNavItem.title,
-                                    tint = if (selectedItemIndex == index) bottomNavItem.selectedColor else bottomNavItem.unselectedColor
                                 )
                             },
                             label = {
                                 Text(
-                                    color = if (selectedItemIndex == index) bottomNavItem.selectedColor else bottomNavItem.unselectedColor,
                                     text = bottomNavItem.title
                                 )
                             }
@@ -731,32 +708,53 @@ fun BottomNavMenu(viewModel: MainViewModel, dbViewModel: DBViewModel, context: C
                 }
             }
         ) {
-                when(selectedItemIndex){
-                    0 ->  Column(
-                        horizontalAlignment = Alignment.Start,
-                        modifier = Modifier.fillMaxSize()
-                    ) {
-                        GetProfileData(viewModel, dbViewModel, context, phoneNumber)
-                        ProfileView(viewModel)
-                    }
-                    1 -> {}
-                    2 -> Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        modifier = Modifier.fillMaxSize()
-                    ) {
-                        GetProfileData(viewModel, dbViewModel, context, phoneNumber)
-                        EditProfileView(viewModel, dbViewModel, context)
-                    }
+            when(selectedItemIndex){
+                0 ->  Column(
+                    horizontalAlignment = Alignment.Start,
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    GetProfileData(viewModel, dbViewModel, context)
+                    ProfileView(viewModel, rep, context)
+                }
+                1 -> {
+                }
+                2 -> Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    GetProfileData(viewModel, dbViewModel, context)
+                    EditProfileView(viewModel, context)
+                }
             }
         }
     }
 }
 
 @Composable
-fun GetProfileData(viewModel: MainViewModel, dbViewModel: DBViewModel, context: Context, phoneNumber: String){
+fun GetProfileData(viewModel: MainViewModel, dbViewModel: DBViewModel, context: Context){
+    val profileData = viewModel.profileData.collectAsState()
+    val data = profileData.value.profileData
+    var dbProfileData = DBProfileData("")
+    val scope = rememberCoroutineScope()
     LaunchedEffect(Unit){
-        val dbProfileData = dbViewModel.getProfileData(phoneNumber)
-        viewModel.getProfileData(dbProfileData, context)
+        scope.launch {
+            dbViewModel.addProfileData(
+                DBProfileData(
+                    data.phone ?: "",
+                    data.name,
+                    data.userName,
+                    data.birthday,
+                    data.city,
+                    data.status,
+                    data.vk,
+                    data.instagram,
+                    data.avatars?.bigAvatar,
+                )
+            )
+            if (data.phone?.isNotEmpty() == true)
+                dbProfileData = dbViewModel.getProfileData(data.phone)
+            viewModel.getProfileData(dbProfileData, context)
+        }
     }
 }
 
@@ -766,26 +764,27 @@ fun getImages(contentResolver: ContentResolver, viewModel: MainViewModel){
     )
     val selection = "${MediaStore.Images.Media._ID}"
 
-    contentResolver.query(
-        MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
-        projection,
-        selection,
-        null,
-        null
-    )?.use {cursor ->
-        val idColumn = cursor.getColumnIndex(MediaStore.Images.Media._ID)
-        val imagesUri = mutableListOf<Uri>()
-        while (cursor.moveToNext()){
-            val id = cursor.getLong(idColumn)
-            val uri = ContentUris.withAppendedId(
-                MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
-                id
-            )
-            imagesUri.add(uri)
+    CoroutineScope(Dispatchers.IO).launch {
+        contentResolver.query(
+            MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+            projection,
+            selection,
+            null,
+            null
+        )?.use { cursor ->
+            val idColumn = cursor.getColumnIndex(MediaStore.Images.Media._ID)
+            val imagesUri = mutableListOf<Uri>()
+            while (cursor.moveToNext()) {
+                val id = cursor.getLong(idColumn)
+                val uri = ContentUris.withAppendedId(
+                    MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                    id
+                )
+                imagesUri.add(uri)
+            }
+            viewModel.externalStorageImages.value = imagesUri
         }
-        viewModel.externalStorageImagesGranted.value = true
-        viewModel.externalStorageImages.value = imagesUri
-        Log.d("Images", imagesUri.toString())
+        this.cancel()
     }
 }
 

@@ -22,12 +22,16 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.selection.TextSelectionColors
 import androidx.compose.material3.Button
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldColors
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -45,11 +49,15 @@ import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PlatformImeOptions
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.TextUnitType
@@ -60,6 +68,7 @@ import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.navigation.NavController
 import androidx.navigation.fragment.findNavController
+import com.arpitkatiyarprojects.countrypicker.CountryPicker
 import com.arpitkatiyarprojects.countrypicker.CountryPickerOutlinedTextField
 import com.arpitkatiyarprojects.countrypicker.models.CountryDetails
 import com.arpitkatiyarprojects.countrypicker.models.CountryPickerProperties
@@ -102,14 +111,23 @@ fun EditPhone(viewModel: MainViewModel, context: Context, ccp: CCP, rep: Reposit
         modifier = Modifier
             .padding(top = 20.dp, bottom = 20.dp)
             .fillMaxWidth()
-            .height(54.dp)
     ) {
         CountryPickerOutlinedTextField(
+
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = colorResource(R.color.new_product_blue),
+                unfocusedBorderColor = colorResource(R.color.text_grey_composable),
+                cursorColor = colorResource(R.color.text_black_composable),
+            ),
             textStyle = TextStyle(
                 fontSize = 22.sp
             ),
-            pickerTextStyles = PickerTextStyles(countryPhoneCodeTextStyle = TextStyle(fontSize = 22.sp)),
+            pickerTextStyles = PickerTextStyles(
+                countryPhoneCodeTextStyle = TextStyle(fontSize = 22.sp)
+            ),
             modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp)
                 .padding(bottom = 20.dp),
             defaultCountryCode = ccp.selectedCountryNameCode,
             mobileNumber = number,
@@ -134,11 +152,11 @@ fun EditPhone(viewModel: MainViewModel, context: Context, ccp: CCP, rep: Reposit
             fontSize = 18.sp,
             color = Color.Red,
             text = stringResource(id = R.string.disclaimer),
-            modifier = Modifier.padding(16.dp)
+            modifier = Modifier.padding(horizontal = 16.dp)
         )
         GetAuthData(
             viewModel,
-            ccp.fullNumber,
+            ccp.fullNumberWithPlus,
             context,
             rep,
             navController,
@@ -156,8 +174,7 @@ fun EditCode(viewModel: MainViewModel, context: Context){
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier
                 .fillMaxWidth()
-                .height(120.dp)
-                .padding(top = 20.dp)
+                .padding(bottom = 16.dp)
         ){
             val focusManager = LocalFocusManager.current
             val (a, b, c, d, e, f) = FocusRequester.createRefs()
@@ -242,6 +259,12 @@ fun CodeCellView(id: Int, viewModel: MainViewModel, modifier: Modifier, focusMan
     }
 
     OutlinedTextField(
+        shape = RoundedCornerShape(10.dp),
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedBorderColor = colorResource(R.color.new_product_blue),
+            unfocusedBorderColor = colorResource(R.color.text_grey_composable),
+            cursorColor = colorResource(R.color.text_black_composable),
+        ),
         maxLines = 1,
         textStyle = TextStyle(
             letterSpacing = TextUnit(0f, TextUnitType(0)),

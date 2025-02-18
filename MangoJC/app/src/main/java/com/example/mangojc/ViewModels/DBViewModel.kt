@@ -1,5 +1,6 @@
 package com.example.mangojc.ViewModels
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.mangojc.Data.DBProfileData
@@ -21,6 +22,7 @@ class DBViewModel(private val userDao: UserDao): ViewModel() {
 
     fun addProfileData(profileData: DBProfileData){
         dbBusy.value = true
+        Log.d("INSERT", "INSERT")
         viewModelScope.launch {
             userDao.insertProfileData(profileData)
             dbBusy.value = false
