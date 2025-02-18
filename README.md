@@ -1,4 +1,4 @@
-App that demonstrates how to create and customize own profile.
+App that demonstrates how to create, authorize and manage your own profile.
 The 6x code is 133337
 ![image](https://github.com/user-attachments/assets/484d5ac7-b006-4d12-8c86-e467994cd780)
 ![image](https://github.com/user-attachments/assets/79bb0e39-34c1-4a37-86ce-5fe37a39a2b6)
